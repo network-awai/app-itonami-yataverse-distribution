@@ -1,0 +1,19 @@
+// Public rate arithmetic only; unknown account allowances and actual provider invoices remain separate.
+'use strict';
+const fs=require('node:fs'),crypto=require('node:crypto');
+const codeSHA=crypto.createHash('sha256').update(fs.readFileSync(__filename)).digest('hex');
+function r2Bill({storageGBMonth,classA=0,classB=0,remainingFreeGBMonth=0,remainingFreeClassA=0,remainingFreeClassB=0}){
+ for(const v of [storageGBMonth,classA,classB,remainingFreeGBMonth,remainingFreeClassA,remainingFreeClassB])if(!Number.isFinite(v)||v<0)throw Error('nonnegative quantities required');
+ for(const v of [classA,classB,remainingFreeClassA,remainingFreeClassB])if(!Number.isSafeInteger(v))throw Error('integer operation quantities required');
+ const storageUnits=Math.ceil(Math.max(0,storageGBMonth-remainingFreeGBMonth)),classAUnits=Math.ceil(Math.max(0,classA-remainingFreeClassA)/1e6),classBUnits=Math.ceil(Math.max(0,classB-remainingFreeClassB)/1e6);
+ const micro=[storageUnits*15000,classAUnits*4500000,classBUnits*360000];if(!micro.every(Number.isSafeInteger)||!Number.isSafeInteger(micro.reduce((s,n)=>s+n,0)))throw Error('rate integer bound');
+ const [storageUSD,classAUSD,classBUSD]=micro.map(n=>n/1e6);
+ return {storageUnitsGBMonth:storageUnits,classAMillionUnits:classAUnits,classBMillionUnits:classBUnits,storageUSD,classAUSD,classBUSD,scenarioSubtotalUSD:micro.reduce((s,n)=>s+n,0)/1e6};
+}
+function scenarios(storageGBMonth){return {
+ r2CapacityOnly:[{remainingFreeGBMonth:0,...r2Bill({storageGBMonth})},{remainingFreeGBMonth:10,...r2Bill({storageGBMonth,remainingFreeGBMonth:10})}],
+ b2CapacityOnly:[{remainingFreeGBMonth:0,storageUSD:storageGBMonth*.00695},{remainingFreeGBMonth:10,storageUSD:Math.max(0,storageGBMonth-10)*.00695}],
+ filOneCapacityOnly:{storageUSD:Math.max(5.99,storageGBMonth/1000*5.99),monthlyMinimumUSD:5.99},
+ scope:'constant full-month decimal-GB hypothesis; capacity only; account allowance unknown; R2 rounding applied; not actual invoice or matched durability qualification'
+};}
+module.exports={codeSHA,r2Bill,scenarios,sources:{verifiedUTCDate:'2026-10-11',r2:'https://developers.cloudflare.com/r2/pricing/',b2:'https://www.backblaze.com/cloud-storage/pricing',filOne:'https://www.fil.one/'}};

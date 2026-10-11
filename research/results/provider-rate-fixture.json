@@ -1,0 +1,11 @@
+{
+  "checks": 9,
+  "codeSHA": "781db68b68036939a7ed9ccb3a8f36538ecf61d1d49b6f9d63a26fca87ff4e50",
+  "scope": "public rate arithmetic; official R2 billing example, rounding and bounds; no actual account/invoice or provider test",
+  "sources": {
+    "verifiedUTCDate": "2026-10-11",
+    "r2": "https://developers.cloudflare.com/r2/pricing/",
+    "b2": "https://www.backblaze.com/cloud-storage/pricing",
+    "filOne": "https://www.fil.one/"
+  }
+}
