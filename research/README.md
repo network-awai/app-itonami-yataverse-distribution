@@ -5,6 +5,8 @@
 現段階では「LLM / Vector DB が既存方式を上回った」という結論は得られていない。
 サンプル比較では **solid zstd + 消失訂正**が最良だった。凍結epoch6の全825,390ブロック / 91,395,086,102 bytesも実読・CID検証・圧縮・断片復元を完了した。全量ではzstd基準を測定し、全方式の最適性までは比較していない。
 
+最終実測（2026-10-12 JST）では専用領域で2ノードの保存・片ノードからの全量復元・EC修復・独立読戻しが完了した。Jacobの元バイト保存と修復288.51分、独立監査115.46分。共有サービスのプローブはTimeoutErrorを1件観測し、無影響条件は未合格。障害ドメイン、クラウド実速度、AC電力と実保守費が未資格のため、同等保証・総費用の優位性は未達。詳細は末尾の最終結果と `results/full-persistent-{campaign,tco}-v2.json`。
+
 ## 調査と実装
 
 | 経路 | 実装内容 | 検証の位置付け |
@@ -36,7 +38,7 @@ GF(256), 多項式 `0x11d` の systematic (6,4) 符号を実装した。
 
 この契約は誤りのない符号化・復号実装、SHA-256の安全性、必要な復号ソフトの存在を前提とする。
 初期のSCI保存器は実験用。後述のWAN試験では、専用コピーのファイル・ディレクトリをfsyncし、実リンク経由の修復・読戻しを実施した。
-電源断試験、WAL、常時修復デーモンはまだ実施していない。全lakeの実WAN転送は後述の永続custody試験で実施し、各工程の完了証拠を区別する。
+電源断試験、WAL、常時修復デーモンはまだ実施していない。全lakeの実ノード間転送は後述の永続custody試験で実施した。独立したWAN経路かは未確認で、各工程の完了証拠を区別する。
 したがって、数学的な断片復元とローカル試験は、運用時の耐久性・SLAの保証とは区別する。
 
 `validate-placement` は拠点ごとの断片数も検査する。
@@ -294,7 +296,7 @@ flatfsのlayoutはmultihash/base32/next-to-last-2限定。未知のlayout・hash
 
 ## 全量の暗号化永続custodyと隔離復旧試験
 
-初回全量保存とWANコピーは完了し、両ノードの全断片/controlの独立読戻しも合格した。凍結epoch6の825,390 CID / 91,395,086,102 bytesが欠損0で対象になった。署名root SHAは`7a4fb7430b599ea594dc9a11415a0d1ae074554f71f3b7fe54269363f7f4d3c6`。Jacobのみを復旧元とするXavier側の全量ストリーム復元・EC修復と独立読戻しも完了した。Xavierのみを復旧元とするJacob側の全量元バイト保存・独立監査は進行中で、完了報告とは分ける。
+初回全量保存とWANコピーは完了し、両ノードの全断片/controlの独立読戻しも合格した。凍結epoch6の825,390 CID / 91,395,086,102 bytesが欠損0で対象になった。署名root SHAは`7a4fb7430b599ea594dc9a11415a0d1ae074554f71f3b7fe54269363f7f4d3c6`。Jacobのみを復旧元とするXavier側の全量ストリーム復元・EC修復と独立読戻しも完了した。Xavierのみを復旧元とするJacob側の全量元バイト保存・独立監査も完了した。新旧receiverの全量ストリームSHAは一致し、研究用AES鍵とメタデータのバックアップから索引を再構築できた。署名秘密鍵の復旧とOS/runtimeの新規bootstrapは未試験。
 
 | 完了済み実測 | bytes / 時間 |
 |---|---:|
@@ -309,7 +311,7 @@ flatfsのlayoutはmultihash/base32/next-to-last-2限定。未知のlayout・hash
 | Xavier全断片/control独立読戻し | 6.78分 |
 | Jacob全断片/control独立読戻し | 31.48分 |
 
-初回WANコピーは21,045,433,967 wire bytes、復号15.32分、EC再生成・書込み35.16分、最終同期3.32分を含む。元lakeも全索引も受信側へ供給せず、索引再構築SHAを署名rootと照合した。受信側に元バイトの全量ファイルはまだ保存せず、全量ストリームを照合した。OSのキャッシュを排除しないcold process実測で、controller経由SSHの時間を含む。`results/full-persistent-build.json`、`results/full-initial-wan-restore.json`、`results/full-source-{xavier,jacob}-readback.json`が完了証拠。
+初回WANコピーは21,045,433,967 wire bytes、復号15.32分、EC再生成・書込み35.16分、最終同期3.32分を含む。元lakeも全索引も受信側へ供給せず、索引再構築SHAを署名rootと照合した。初回コピーでは元バイトの全量ファイルを保存せず、全量ストリームを照合した。OSのキャッシュを排除しないcold process実測で、controller経由SSHの時間を含む。`results/full-persistent-build.json`、`results/full-initial-wan-restore.json`、`results/full-source-{xavier,jacob}-readback.json`が完了証拠。
 
 `custody_build.cljk` は既存のCID付き元バイトを読むだけで、今回専用のAES-256-GCM鍵を使い、圧縮パックを暗号化して(6,4)断片を専用領域へ永続保存する。各ファイル・ディレクトリをfsyncし、48GiBの空き容量余裕を下回ると停止する。既存サービスの停止、WAN設定変更、pin解除、元データ削除、本番鍵の読み出しは行わない。
 
@@ -396,3 +398,32 @@ Jacobへの初回全量コピーで、研究用receiverだけをnice 19で1秒�
 TCO報告には、この理想的な論理形式だけでなく、独立読戻し済みの各ノードのcustody形式を同じ量だけ外部へ置く容量仮定も載せる。アカウント全体の無料枠残量、保管日数、実操作数、取得頻度、顧客側の計算・鍵管理・運用費は未確認なので実請求額・総費用はnullとする。これらは実PUT/GETや同等耐久性を認定した外部サービス比較ではない。
 
 共有サービスの応答遅延を再観測したため、同じreceiverを追加で約121.99秒停止して自動再開した。全量復元完了後の独立auditではKubo versionプローブに1件の `TimeoutError` を観測し、次のサンプルは約1.68msで成功した。`custody_audit_pause.cljk` で専用auditのUID・全argvを照合し、約122.21秒停止後に同一PIDを再開した。同一ユーザーの別プロセスは信号を送らないdry-runで拒否された。受動プローブの失敗と共有負荷の因果関係は未確定で、サービス性能への無影響・無停止の合格証拠にはしない。停止時間は各工程のwall timeに含む。
+
+
+### 全量試験の最終結果（凍結epoch6）
+
+`results/full-persistent-campaign-v2.json` は全工程の完了証拠。825,390 CID / 91,395,086,102 bytesを欠損0で対象にし、生存ノードの4断片だけを転送した。断片0/1、primary鍵・メタデータ、供給索引、元lakeを復旧入力から除外した。これはreaderの論理障害注入で、物理WAN遮断・電源断ではない。実際の転送経路が独立したWANかも未確認。
+
+| 実測工程 | 結果 |
+|---|---:|
+| Jacob→Xavier 全量ストリーム復元・EC修復 | 53.96分 |
+| Xavier側の修復後独立読戻し | 7.16分 |
+| Xavier→Jacob 全量元バイト保存・EC修復・同期 | 288.51分 |
+| Jacob側の元バイト・CID・offsetを含む独立読戻し | 115.46分 |
+| 両復旧方向の元バイトSHA一致 | 合格 |
+| 再構築した署名索引と全829,216 offset対応 | 合格 |
+| 修復後の全33,714断片と各3control/metadata | 両ノード合格 |
+
+Jacobの元バイトSHAは `cc199fbc56b2b19d68136f1e4b40c6a9c369039a2c868d2ec6abac0892c4fefe`。署名索引SHAは `e4eb14e7ff06dfb21ce44c678b7004d55360ee9f3f6d9981cff173c1e8b46888`。Xavier側は空き容量余裕のため全元バイトをストリーム照合し、元バイトの全量ファイルは保持しない。旧receiverの未完了16.14GB試験は保全した。batchingのwrite呼出し削減は確認したが、条件の揃った全量速度改善は証明していない。
+
+全期間のJacob Kubo versionプローブは1件のTimeoutErrorを記録した。buffered復元1,674件は失敗0・p95約9.79ms、独立audit675件は失敗1・成功サンプルのp95約2.34ms。短い窓では約340msのp95や1秒超の応答も観測した。停止比較と共有負荷・backgroundクライアントの観測を含むため因果関係は未確定だが、サービス性能への無影響条件は合格扱いにしない。停止・延長の記録は `results/full-study-control-events.json` に収録し、研究observerの終了と最終ログSHA一致も確認した。
+
+`results/full-study-allocation.json` は元lakeの外にある専用研究領域の集計。hardlinkの同一inodeを一度だけ数え、Xavier 66,328,989,696 / Jacob 187,750,543,360 / 合計254,079,533,056 allocated bytesだった。復元アーカイブ、修復コピー、保全した未完了試験、同じノードのsource-view、runtimeとログを含む。通常custodyの2ノード割当64,717,594,624 bytesと混同しない。TCO中の4資格済み領域の割当221,791,830,016 bytesとも範囲が異なる。controller・ローカルLLMモデル、filesystem管理領域とCoW/snapshot共有は集計外。census自身の出力は各snapshot後に作成された。hardlinkとsymlinkの扱いをローカルfixtureの5項目で検証した。
+
+`results/full-persistent-tco-v2.json` に購入額合計150,000円、電気料金27円/kWhと実測容量・railサンプルを反映した。whole-host専有を仮定し、償却36/60か月・2台合計AC20/40/60W・保守0/0.5/2h/月・仮の工賃3,000円/hでは月2,894.20〜11,349.27円の小計。AC電力実測、外付けディスク費、実保守工数・単価、回線・交換・監視・修復費などは未確定で、実総費用はnullのまま。既存サービスと共用する資本按分も仮定で、追加電力や追加支出の測定ではない。
+
+クラウドにも同じ圧縮を使える。暗号化圧縮本体＋1論理controlセット21.223301652 GBを丸1か月保存する容量だけの仮説では、[R2 Standard](https://developers.cloudflare.com/r2/pricing/)は未使用無料枠10GBを全て使える場合0.18 USD／無料枠なし0.33 USD（整数GB-month丸上げ）、[B2](https://www.backblaze.com/cloud-storage/pricing)はそれぞれ約0.0780／0.1475 USD、[Fil One](https://www.fil.one/)は最低5.99 USD/月。Fil Oneは特定商品で、Filecoinネットワーク全体の料金ではない。実際に検証したcustody形式32.23GB/ノードの条件別料金もTCO JSONに別記した。請求書、実PUT/GET・速度・転送頻度・アカウント無料枠、同等の耐久性は測定していない。Mithrilのリソースはこの試験の保存先に使わない。
+
+2台の物理拠点・WAN・ルーター・電源の独立性は未確認／一部共有。11-nines、常時scrub・自動修復、trust/keyの独立custody、研究用以外の鍵・署名秘密鍵・OS/runtime bootstrapの復旧は未資格。今回の完全復元成功からクラウド各社と同等の保証や、保存容量・速度・総費用の優位性を結論しない。成果は専用研究領域とローカル成果物であり、本番lake保存先の切替・本番統合は実施していない。
+
+今回の検証は、buffered/source-view fixtureの31チェック、料金計算の9チェック、hardlink/symlink割当の5チェック、および全量campaignと独立監査を含む。既存CLI・SCIテストは前工程の記録を保持し、変更と無関係な再実行は行わない。

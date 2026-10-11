@@ -1,0 +1,211 @@
+{
+  "xavier": {
+    "events": {
+      "observer-restarts.jsonl": {
+        "sha256": "739d55a8109073fee9a21094278076434da32113d5c46823d6740902be39a3eb",
+        "rows": [
+          {
+            "kind": "telemetry",
+            "time": 1791709588.1643653,
+            "previousPID": 3941164,
+            "newPID": 3971516,
+            "priorLogBytes": 244330,
+            "priorLogSHA": "8aa9e18a36e249a4d6252cbe6974b2ddad11d091b0b6b342557966cabaeb825c",
+            "previousRuntimeSHA": "af7686ed456431806633757534dda9838202d8b7c6d10be2824064e2ed5a6cb2",
+            "continuedRuntimeSHA": "fe70270878ca9556b4fef85a6866872bc4441f9ec743803167bf0df3c3afa258",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          },
+          {
+            "kind": "telemetry",
+            "time": 1791726216.3168378,
+            "previousPID": 3971516,
+            "newPID": 4033218,
+            "priorLogBytes": 786309,
+            "priorLogSHA": "b00319cfd8bfa6e123f0c61a2fb98aaff68735c398f3a9ff08512ce1f07943f1",
+            "previousRuntimeSHA": "fe70270878ca9556b4fef85a6866872bc4441f9ec743803167bf0df3c3afa258",
+            "continuedRuntimeSHA": "fe70270878ca9556b4fef85a6866872bc4441f9ec743803167bf0df3c3afa258",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          },
+          {
+            "kind": "telemetry",
+            "time": 1791747040.9178984,
+            "previousPID": 4033218,
+            "newPID": 4109045,
+            "priorLogBytes": 1486913,
+            "priorLogSHA": "8af98b6f1a31cdfbeeff46236f33dc3fa15138e9cfd7eaf73b37ae11a3f789a9",
+            "previousRuntimeSHA": "fe70270878ca9556b4fef85a6866872bc4441f9ec743803167bf0df3c3afa258",
+            "continuedRuntimeSHA": "fe70270878ca9556b4fef85a6866872bc4441f9ec743803167bf0df3c3afa258",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          }
+        ]
+      }
+    },
+    "observer": {
+      "aliveCount": 0,
+      "stopMarkerPresent": true,
+      "finalLogSHA": "edf70212f80486733005dcec9093820b74ce8e9e0919802ad19aab0dd15f662f"
+    }
+  },
+  "jacob": {
+    "events": {
+      "observer-restarts.jsonl": {
+        "sha256": "443f4e214946daf6f09531c306650a380a08c4f0372642ba72aef3e4518e7ee0",
+        "rows": [
+          {
+            "kind": "probes",
+            "time": 1791709591.4903429,
+            "previousPID": 25170,
+            "newPID": 44643,
+            "priorLogBytes": 66774,
+            "priorLogSHA": "a48dd006b7620bd0f72e3b967710eb9509e63be44326b01aad261fe04003f763",
+            "previousRuntimeSHA": "ef4ec02884928d255a9bdd5cc93316ff13fc76ebcb7a36a65fb7854361eaef9e",
+            "continuedRuntimeSHA": "624f5a1b3115110ccdd88a56114ea030b50c2dbb81e77dae16f37be2e1d91076",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          },
+          {
+            "kind": "probes",
+            "time": 1791726220.087305,
+            "previousPID": 44643,
+            "newPID": 10862,
+            "priorLogBytes": 295641,
+            "priorLogSHA": "63a69e38718126744596d52fd7349f34fb8260373510b94765c73595d0b1289c",
+            "previousRuntimeSHA": "624f5a1b3115110ccdd88a56114ea030b50c2dbb81e77dae16f37be2e1d91076",
+            "continuedRuntimeSHA": "624f5a1b3115110ccdd88a56114ea030b50c2dbb81e77dae16f37be2e1d91076",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          },
+          {
+            "kind": "probes",
+            "time": 1791747048.225583,
+            "previousPID": 10862,
+            "newPID": 97269,
+            "priorLogBytes": 604585,
+            "priorLogSHA": "5f0fde52640ab137477db538d7ff8b39806ef6983887e84b877f4e1ebe27c00c",
+            "previousRuntimeSHA": "624f5a1b3115110ccdd88a56114ea030b50c2dbb81e77dae16f37be2e1d91076",
+            "continuedRuntimeSHA": "624f5a1b3115110ccdd88a56114ea030b50c2dbb81e77dae16f37be2e1d91076",
+            "append": true,
+            "scope": "passive study observer only; no storage receiver, service or network settings changed"
+          }
+        ]
+      },
+      "receiver-pause-events.jsonl": {
+        "sha256": "34889a159dd9e93a4cd8541605066c82a4def6dc76c10a7caa1dcd3c0f1e8f12",
+        "rows": [
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "pause-request",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791735763.194175,
+            "durationSeconds": 300,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "paused",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791735766.212569,
+            "durationSeconds": 300,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "resumed",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791736066.6917078,
+            "durationSeconds": 300,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "pause-request",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791742158.934237,
+            "durationSeconds": 120,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "paused",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791742160.5212622,
+            "durationSeconds": 120,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-receiver-pause/v1",
+            "action": "resumed",
+            "pid": 9664,
+            "uid": 501,
+            "argvSHA": "6e51a4443c9310959a1b904db3e67625c5de82b0bb977f0227794dfb5dda5515",
+            "codeSHA": "ec208f83302a9cad32dbb5a24f705016d37f3ca3d0c7986a968aa52e238b46e0",
+            "unixSeconds": 1791742280.921328,
+            "durationSeconds": 120,
+            "scope": "dedicated receiver only; existing services and network configuration unchanged"
+          }
+        ]
+      },
+      "audit-pause-events.jsonl": {
+        "sha256": "c0ee38e35f1eefe77220c7f291dfd38a1bee476386159d26c758427a40b63d46",
+        "rows": [
+          {
+            "schema": "yataverse-bounded-audit-pause/v1",
+            "action": "pause-request",
+            "pid": 80916,
+            "uid": 501,
+            "argvSHA": "a599d015fece9d740175576f2907ada6934899a7d6215215f6a90c56e86b3128",
+            "codeSHA": "6866754051980ff43f5770722b8415a84e5b0c1896daef0172a523b45ce25f5c",
+            "unixSeconds": 1791743889.410194,
+            "durationSeconds": 120,
+            "scope": "dedicated audit only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-audit-pause/v1",
+            "action": "paused",
+            "pid": 80916,
+            "uid": 501,
+            "argvSHA": "a599d015fece9d740175576f2907ada6934899a7d6215215f6a90c56e86b3128",
+            "codeSHA": "6866754051980ff43f5770722b8415a84e5b0c1896daef0172a523b45ce25f5c",
+            "unixSeconds": 1791743891.044669,
+            "durationSeconds": 120,
+            "scope": "dedicated audit only; existing services and network configuration unchanged"
+          },
+          {
+            "schema": "yataverse-bounded-audit-pause/v1",
+            "action": "resumed",
+            "pid": 80916,
+            "uid": 501,
+            "argvSHA": "a599d015fece9d740175576f2907ada6934899a7d6215215f6a90c56e86b3128",
+            "codeSHA": "6866754051980ff43f5770722b8415a84e5b0c1896daef0172a523b45ce25f5c",
+            "unixSeconds": 1791744011.620957,
+            "durationSeconds": 120,
+            "scope": "dedicated audit only; existing services and network configuration unchanged"
+          }
+        ]
+      }
+    },
+    "observer": {
+      "aliveCount": 0,
+      "stopMarkerPresent": true,
+      "finalLogSHA": "b1390ce5cd6c3067484b053d16f3e2f24c35f4c7ecfd269f67cba96ddb2c3cc4"
+    }
+  }
+}

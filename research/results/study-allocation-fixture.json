@@ -1,0 +1,21 @@
+{
+  "checks": 5,
+  "passed": true,
+  "codeSHA": "4b1afdc7bd6ebaf946d0a2fe349cd510df124da2cbf27e56d6612de097f4d4a8",
+  "scope": "local fixture only: hardlinks counted once, symlinks not followed, stat block allocation; no remote lake result",
+  "allocation": {
+    "schema": "yataverse-study-unique-file-allocation/v1",
+    "codeSHA": "4b1afdc7bd6ebaf946d0a2fe349cd510df124da2cbf27e56d6612de097f4d4a8",
+    "files": 4,
+    "uniqueFiles": 3,
+    "hardlinkAliases": 1,
+    "symlinksSkipped": 1,
+    "otherSkipped": 0,
+    "logicalBytes": 9219,
+    "logicalAllocatedBytes": 20480,
+    "uniqueFileBytes": 5122,
+    "uniqueAllocatedBytes": 12288,
+    "scope": "entire dedicated study root, including preserved incomplete trials, source-view controls, keys, runtimes and logs; same dev/inode counted once; original lake outside study root excluded",
+    "limits": "regular-file stat blocks only; directory/inode/journal/reserves and filesystem CoW/snapshot sharing not measured; instantaneous metadata census, not content verification"
+  }
+}

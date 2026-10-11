@@ -1,0 +1,40 @@
+{
+  "schema": "yataverse-whole-study-allocation/v1",
+  "nodes": {
+    "xavier": {
+      "schema": "yataverse-study-unique-file-allocation/v1",
+      "codeSHA": "4b1afdc7bd6ebaf946d0a2fe349cd510df124da2cbf27e56d6612de097f4d4a8",
+      "files": 202579,
+      "uniqueFiles": 135151,
+      "hardlinkAliases": 67428,
+      "symlinksSkipped": 0,
+      "otherSkipped": 0,
+      "logicalBytes": 97397661099,
+      "logicalAllocatedBytes": 97993347072,
+      "uniqueFileBytes": 65931604113,
+      "uniqueAllocatedBytes": 66328989696,
+      "scope": "entire dedicated study root, including preserved incomplete trials, source-view controls, keys, runtimes and logs; same dev/inode counted once; original lake outside study root excluded",
+      "limits": "regular-file stat blocks only; directory/inode/journal/reserves and filesystem CoW/snapshot sharing not measured; instantaneous metadata census, not content verification"
+    },
+    "jacob": {
+      "schema": "yataverse-study-unique-file-allocation/v1",
+      "codeSHA": "4b1afdc7bd6ebaf946d0a2fe349cd510df124da2cbf27e56d6612de097f4d4a8",
+      "files": 245,
+      "uniqueFiles": 245,
+      "hardlinkAliases": 0,
+      "symlinksSkipped": 0,
+      "otherSkipped": 0,
+      "logicalBytes": 187593387024,
+      "logicalAllocatedBytes": 187750543360,
+      "uniqueFileBytes": 187593387024,
+      "uniqueAllocatedBytes": 187750543360,
+      "scope": "entire dedicated study root, including preserved incomplete trials, source-view controls, keys, runtimes and logs; same dev/inode counted once; original lake outside study root excluded",
+      "limits": "regular-file stat blocks only; directory/inode/journal/reserves and filesystem CoW/snapshot sharing not measured; instantaneous metadata census, not content verification"
+    }
+  },
+  "uniqueAllocatedBytes": 254079533056,
+  "uniqueFileBytes": 253524991137,
+  "originalLakeExcluded": true,
+  "controllerAndLocalModelExcluded": true,
+  "limits": "metadata census; directory/inode/journal/reserve and CoW/snapshot sharing unmeasured; census output itself created after each snapshot"
+}
