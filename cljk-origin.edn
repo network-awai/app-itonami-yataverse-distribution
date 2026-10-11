@@ -43,4 +43,5 @@
   "research/custody_buffered_campaign.cljk" ".js"
   "research/custody_study_allocation.cljk" ".js"
   "research/custody_receiver_pause.cljk" ".py"
+  "research/custody_audit_pause.cljk" ".py"
   "research/custody_provider_rates.cljk" ".js"}}
