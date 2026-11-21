@@ -1,0 +1,20 @@
+# AWAI-465 renewer namespace. PodSecurity "restricted" is enforced: no root,
+# no added capabilities, no hostPath, no privilege escalation.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: yataverse-acme
+  labels:
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    app.kubernetes.io/part-of: yataverse-acme
+---
+# No RoleBinding refers to this account and its token is never mounted: the
+# job needs nothing from the Kubernetes API.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: yataverse-acme
+  namespace: yataverse-acme
+automountServiceAccountToken: false
