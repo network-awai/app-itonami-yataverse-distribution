@@ -1,0 +1,229 @@
+# AWAI-465 renewer. "production" runs every 6 h (lego renews only when due;
+# every run re-pushes, which is how an offline target catches up).
+# "staging" is suspended and run on demand through the same path:
+#   kubectl -n yataverse-acme create job --from=cronjob/yataverse-acme-staging staging-$(date +%s)
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: yataverse-acme-production
+  namespace: yataverse-acme
+spec:
+  schedule: "17 */6 * * *"
+  timeZone: Etc/UTC
+  # Stays suspended until the staging E2E passes and a target is enrolled
+  # (runbook step 6), so no Job waits on a missing pool or Secret.
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      # Includes the wait for the autoscaler to bring the pool up from 0.
+      activeDeadlineSeconds: 2700
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: yataverse-acme, yataverse.network/profile: production}
+        spec:
+          serviceAccountName: yataverse-acme
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          restartPolicy: Never
+          # Only the dedicated pool; its taint keeps every CI pod off it.
+          nodeSelector: {vke.vultr.com/node-pool: yataverse-acme}
+          tolerations:
+            - {key: yataverse.network/acme, operator: Equal, value: renewer, effect: NoSchedule}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile: {type: RuntimeDefault}
+          initContainers:
+            - name: ts-cli
+              image: docker.io/tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+              command: [cp, /usr/local/bin/tailscale, /ts-bin/tailscale]
+              securityContext: &restricted
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              volumeMounts:
+                - {name: ts-bin, mountPath: /ts-bin}
+            # Native sidecar: userspace networking (no tun, no NET_ADMIN),
+            # stops when the renew container exits.
+            - name: tailscale
+              image: docker.io/tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+              restartPolicy: Always
+              env:
+                - {name: TS_USERSPACE, value: "true"}
+                - {name: TS_SOCKET, value: /ts-run/tailscaled.sock}
+                - {name: TS_STATE_DIR, value: /state/tailscale}
+                - {name: TS_KUBE_SECRET, value: ""}
+                - {name: TS_AUTH_ONCE, value: "true"}
+                - {name: TS_ACCEPT_DNS, value: "false"}
+                - {name: TS_HOSTNAME, value: yataverse-acme-renewer}
+                - {name: TS_EXTRA_ARGS, value: "--advertise-tags=tag:yataverse-acme"}
+                - name: TS_AUTHKEY
+                  valueFrom:
+                    secretKeyRef: {name: yataverse-acme-tailscale, key: authkey}
+              securityContext: *restricted
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - {name: ts-run, mountPath: /ts-run}
+                - {name: state, mountPath: /state}
+                - {name: tmp, mountPath: /tmp}
+          containers:
+            - name: renew
+              image: docker.io/library/buildpack-deps:bookworm-scm@sha256:5bac6b3020afcf0358de87990605d5dc4c3f060629381912266b9b9278375af3
+              command: [sh, /opt/yataverse-acme/k8s-run.sh]
+              env:
+                - {name: PROFILE, value: production}
+                - {name: HOME, value: /state}
+                - {name: CREDENTIALS_DIRECTORY, value: /run/yataverse-acme}
+              securityContext: *restricted
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {memory: 512Mi}
+              volumeMounts:
+                - {name: scripts, mountPath: /opt/yataverse-acme/renew.sh, subPath: renew.sh}
+                - {name: scripts, mountPath: /opt/yataverse-acme/acme-lib.sh, subPath: acme-lib.sh}
+                - {name: scripts, mountPath: /opt/yataverse-acme/k8s-run.sh, subPath: k8s-run.sh}
+                - {name: scripts, mountPath: /etc/yataverse-acme/renew.conf, subPath: renew.conf}
+                - {name: scripts, mountPath: /etc/yataverse-acme/known_hosts, subPath: known_hosts}
+                - {name: scripts, mountPath: /etc/yataverse-acme/le-staging-roots.pem, subPath: le-staging-roots.pem}
+                - {name: dns, mountPath: /run/yataverse-acme/dns.env, subPath: dns.env}
+                - {name: push, mountPath: /run/yataverse-acme/push_key, subPath: push_key}
+                - {name: state, mountPath: /state}
+                - {name: ts-bin, mountPath: /ts-bin, readOnly: true}
+                - {name: ts-run, mountPath: /ts-run}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: scripts
+              configMap: {name: yataverse-acme-scripts, defaultMode: 0444}
+            # Created by the owner, never from this repository. defaultMode
+            # 0440 + fsGroup: readable by the job user only (acme_secret_file).
+            - name: dns
+              secret: {secretName: yataverse-acme-dns, defaultMode: 0440}
+            - name: push
+              secret: {secretName: yataverse-acme-push, defaultMode: 0440}
+            - name: state
+              persistentVolumeClaim: {claimName: yataverse-acme-state}
+            - {name: ts-bin, emptyDir: {medium: Memory, sizeLimit: 64Mi}}
+            - {name: ts-run, emptyDir: {medium: Memory, sizeLimit: 1Mi}}
+            - {name: tmp, emptyDir: {medium: Memory, sizeLimit: 16Mi}}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: yataverse-acme-staging
+  namespace: yataverse-acme
+spec:
+  schedule: "0 0 1 1 *"
+  timeZone: Etc/UTC
+  suspend: true
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 5
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      # Includes the wait for the autoscaler to bring the pool up from 0.
+      activeDeadlineSeconds: 2700
+      template:
+        metadata:
+          labels: {app.kubernetes.io/name: yataverse-acme, yataverse.network/profile: staging}
+        spec:
+          serviceAccountName: yataverse-acme
+          automountServiceAccountToken: false
+          enableServiceLinks: false
+          restartPolicy: Never
+          # Only the dedicated pool; its taint keeps every CI pod off it.
+          nodeSelector: {vke.vultr.com/node-pool: yataverse-acme}
+          tolerations:
+            - {key: yataverse.network/acme, operator: Equal, value: renewer, effect: NoSchedule}
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 65534
+            runAsGroup: 65534
+            fsGroup: 65534
+            fsGroupChangePolicy: OnRootMismatch
+            seccompProfile: {type: RuntimeDefault}
+          initContainers:
+            - name: ts-cli
+              image: docker.io/tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+              command: [cp, /usr/local/bin/tailscale, /ts-bin/tailscale]
+              securityContext: &restricted
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              volumeMounts:
+                - {name: ts-bin, mountPath: /ts-bin}
+            # Native sidecar: userspace networking (no tun, no NET_ADMIN),
+            # stops when the renew container exits.
+            - name: tailscale
+              image: docker.io/tailscale/tailscale:v1.104.7@sha256:72c1e19e0aedca96b8533bbb0b4368564410ff20b17e53b804eb6c1f04a31be4
+              restartPolicy: Always
+              env:
+                - {name: TS_USERSPACE, value: "true"}
+                - {name: TS_SOCKET, value: /ts-run/tailscaled.sock}
+                - {name: TS_STATE_DIR, value: /state/tailscale}
+                - {name: TS_KUBE_SECRET, value: ""}
+                - {name: TS_AUTH_ONCE, value: "true"}
+                - {name: TS_ACCEPT_DNS, value: "false"}
+                - {name: TS_HOSTNAME, value: yataverse-acme-renewer}
+                - {name: TS_EXTRA_ARGS, value: "--advertise-tags=tag:yataverse-acme"}
+                - name: TS_AUTHKEY
+                  valueFrom:
+                    secretKeyRef: {name: yataverse-acme-tailscale, key: authkey}
+              securityContext: *restricted
+              resources:
+                requests: {cpu: 50m, memory: 64Mi}
+                limits: {memory: 256Mi}
+              volumeMounts:
+                - {name: ts-run, mountPath: /ts-run}
+                - {name: state, mountPath: /state}
+                - {name: tmp, mountPath: /tmp}
+          containers:
+            - name: renew
+              image: docker.io/library/buildpack-deps:bookworm-scm@sha256:5bac6b3020afcf0358de87990605d5dc4c3f060629381912266b9b9278375af3
+              command: [sh, /opt/yataverse-acme/k8s-run.sh]
+              env:
+                - {name: PROFILE, value: staging}
+                - {name: HOME, value: /state}
+                - {name: CREDENTIALS_DIRECTORY, value: /run/yataverse-acme}
+              securityContext: *restricted
+              resources:
+                requests: {cpu: 100m, memory: 128Mi}
+                limits: {memory: 512Mi}
+              volumeMounts:
+                - {name: scripts, mountPath: /opt/yataverse-acme/renew.sh, subPath: renew.sh}
+                - {name: scripts, mountPath: /opt/yataverse-acme/acme-lib.sh, subPath: acme-lib.sh}
+                - {name: scripts, mountPath: /opt/yataverse-acme/k8s-run.sh, subPath: k8s-run.sh}
+                - {name: scripts, mountPath: /etc/yataverse-acme/renew.conf, subPath: renew.conf}
+                - {name: scripts, mountPath: /etc/yataverse-acme/known_hosts, subPath: known_hosts}
+                - {name: scripts, mountPath: /etc/yataverse-acme/le-staging-roots.pem, subPath: le-staging-roots.pem}
+                - {name: dns, mountPath: /run/yataverse-acme/dns.env, subPath: dns.env}
+                - {name: push, mountPath: /run/yataverse-acme/push_key, subPath: push_key}
+                - {name: state, mountPath: /state}
+                - {name: ts-bin, mountPath: /ts-bin, readOnly: true}
+                - {name: ts-run, mountPath: /ts-run}
+                - {name: tmp, mountPath: /tmp}
+          volumes:
+            - name: scripts
+              configMap: {name: yataverse-acme-scripts, defaultMode: 0444}
+            # Created by the owner, never from this repository. defaultMode
+            # 0440 + fsGroup: readable by the job user only (acme_secret_file).
+            - name: dns
+              secret: {secretName: yataverse-acme-dns, defaultMode: 0440}
+            - name: push
+              secret: {secretName: yataverse-acme-push, defaultMode: 0440}
+            - name: state
+              persistentVolumeClaim: {claimName: yataverse-acme-state}
+            - {name: ts-bin, emptyDir: {medium: Memory, sizeLimit: 64Mi}}
+            - {name: ts-run, emptyDir: {medium: Memory, sizeLimit: 1Mi}}
+            - {name: tmp, emptyDir: {medium: Memory, sizeLimit: 16Mi}}

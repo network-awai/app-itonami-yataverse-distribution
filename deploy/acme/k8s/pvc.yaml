@@ -1,0 +1,13 @@
+# lego account key, issued certificates, the pinned lego binary, the tailscale
+# node state (stable tailnet address, so targets can pin from=) and status
+# files. Retained if the claim is deleted.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: yataverse-acme-state
+  namespace: yataverse-acme
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: vultr-block-storage-retain
+  resources:
+    requests: {storage: 10Gi}

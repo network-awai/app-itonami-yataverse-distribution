@@ -1,0 +1,18 @@
+# kubectl apply -k deploy/acme   (no Secrets here; see docs/AWAI-465-ACME-RENEWAL.md)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - k8s/namespace.yaml
+  - k8s/networkpolicy.yaml
+  - k8s/pvc.yaml
+  - k8s/cronjob.yaml
+configMapGenerator:
+  - name: yataverse-acme-scripts
+    namespace: yataverse-acme
+    files:
+      - renew.sh
+      - acme-lib.sh
+      - k8s/k8s-run.sh
+      - k8s/renew.conf
+      - k8s/known_hosts
+      - k8s/le-staging-roots.pem
