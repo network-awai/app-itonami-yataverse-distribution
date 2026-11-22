@@ -8,8 +8,10 @@ done.
 - Current certificate: SAN `ipfs.yataverse.com`, notAfter **2027-01-29 21:49:17 UTC**,
   SHA-256 of the DER `ea1ad21fefa95707da7132c4ec73e8df29c461041290a4ebcb6bfe9095c85b8d`
   (from `docs/evidence/jun-228-cutover-20261101.json`).
-- Hard deadline for this run: **2026-12-30**. The old certificate keeps serving
-  until 2027-01-29, so a failed attempt can be retried.
+- Deadline for this run: **2026-12-30**, if Xavier is serving by then. The old
+  certificate keeps serving until 2027-01-29, so a failed attempt can be retried.
+  If Xavier is still offline, the deadline becomes "before 443 is opened again"
+  (§0.1). An expired certificate on a host that is not serving harms nothing.
 - No API token is created or used. The owner adds the `_acme-challenge` TXT record
   by hand in the Cloudflare dashboard. Cloudflare stays DNS-only: the A record and
   its "DNS only" (grey cloud) setting do not change.
@@ -30,8 +32,71 @@ dig +short A ipfs.yataverse.com @1.1.1.1
 ```
 
 - If the ssh command prints `certbot 0.40.0` and nginx, continue with **path A**.
-- If Xavier is still unreachable, use **path B** (§3). Do not move the A record to
-  another host as part of this runbook. A route change needs its own approval.
+- If Xavier is still unreachable, see §0.1. Do not move the A record to another
+  host as part of this runbook. A route change needs its own approval (§4).
+
+### 0.1 Xavier returns late, possibly after 2027-01-29
+
+Node Ops expects Xavier and gad to stay offline until the Awai Android OS work
+is done, possibly after 2026-12-20.
+
+**An expiry during the outage harms nothing.** While nothing serves
+`ipfs.yataverse.com`, no client sees the certificate. DNS-01 issuance does not
+need the host to be online, and it works on any day, including after the old
+certificate has expired. So the renewal does not have to happen before Xavier
+returns. It has to happen **before Xavier serves 443 again**.
+
+When Xavier comes back:
+
+1. **First, keep 443 closed.** The `xavier-https-443-map.timer` renews the WAN 443
+   mapping every 5 min (900 s lease, JUN-228), and it starts at boot. Stop it
+   before anything else:
+
+   ```sh
+   sudo systemctl stop xavier-https-443-map.timer xavier-https-443-map.service
+   ```
+
+   If Node Ops can, mask the timer before first boot instead
+   (`systemctl mask xavier-https-443-map.timer`, unmasked in step 5), so 443 is
+   never published even for the first 5 min.
+2. **Precondition check: is the certificate still valid for at least 14 days?**
+
+   ```sh
+   C=/etc/letsencrypt/live/ipfs.yataverse.com/cert.pem
+   sudo openssl x509 -in $C -noout -enddate
+   sudo openssl x509 -in $C -noout -checkend $((14*86400)) \
+     && echo "cert-ok: §1 optional" || echo "cert-expired-or-near: run §1 before 443"
+   ```
+3. If the check says `cert-expired-or-near`, run **path A** (§1.1–§1.4) now, on
+   Xavier, with 443 still closed. §1.4's local check (`127.0.0.1:443`) works
+   without the WAN mapping.
+4. Repeat step 2. It must print `cert-ok`.
+5. Only then open 443 again (unmask first if you masked it):
+
+   ```sh
+   sudo systemctl start xavier-https-443-map.timer
+   ```
+
+   Then run the external checks in §2.
+
+To keep this from depending on memory next time, add a guard to the 443 mapping
+service so it never publishes 443 with a certificate that has expired or is
+about to expire. This changes the production host and needs approval when Xavier
+is back:
+
+```ini
+# /etc/systemd/system/xavier-https-443-map.service.d/awai-465-cert-guard.conf
+[Service]
+ExecCondition=/usr/bin/openssl x509 -noout -checkend 86400 -in /etc/letsencrypt/live/ipfs.yataverse.com/cert.pem
+```
+
+`ExecCondition` skips the run without failing the unit. The existing lease then
+lapses within 900 s and 443 stops being published. Run `systemctl daemon-reload`
+after installing it.
+
+Path B (§3) is optional when Xavier returns late: a certificate issued on the Mac
+in December may itself have expired by then. Issuing on Xavier at return time is
+simpler.
 
 ## 1. Path A: renew on Xavier with the existing certbot lineage
 
@@ -278,7 +343,61 @@ If Xavier is not back before **2027-01-29 21:49 UTC**, the site is down anyway a
 the expiry does not change what clients see. Install the new certificate when
 Xavier returns, if it is still valid then.
 
-## 4. Record
+## 4. If the Reader must be served before Xavier returns (Decision chooses)
+
+This runbook does not need either option. They apply only if the Reader has to
+be online before Xavier is. Prices are Vultr Tokyo (nrt) list prices read from
+the Vultr API on 2026-11-22: vc2-1c-2gb $10/mo (55 GB disk), vc2-4c-8gb $40/mo
+(160 GB disk), NVMe block storage about $0.10/GB-mo. The dated lake measured
+88,410,406,176 bytes (README).
+
+### (a) Temporary Reader on Vultr or VKE, same bytes, self-served (recommended if needed)
+
+- **Host:** one dedicated node. This is either a plain Vultr instance or a VKE
+  node pool of 1 node with its own taint. VKE cannot scale from 0 (AWAI-465), so
+  the pool is always on. It must not share a node with Tatara CI, for the
+  isolation reasons in `docs/AWAI-465-ACME-RENEWAL.md` on PR #114.
+- **Serving:** nginx with the same canonical vhost, in front of either:
+  - **a1. A local copy:** Kubo, or the repo's `serve_lake` raw-block reader, over a
+    full copy of the blocks. Fill it from R2 through the existing
+    `deploy/r2_origin_bridge.py`. That bridge runs on the operator Mac with its
+    existing Wrangler OAuth session and is reached over an SSH reverse tunnel, so
+    no credential goes onto the VM (README, "Temporary R2 bootstrap bridge").
+    Every block is CID-checked. Cost: about **$25/mo** (vc2-1c-2gb $10 plus a
+    150 GB block volume, about $15), or **$40/mo** on vc2-4c-8gb with the copy on
+    the local disk. Plus the operator time to copy about 88 GB.
+  - **a2. A read-only gateway over R2 with no local copy:** about **$10/mo** for the
+    node. R2 egress is free, and reads cost cents at this volume. But it puts an
+    R2 read credential on the node. That is a new credential decision, and the
+    owner declined new tokens on 2026-11-22. Note: the repository's
+    `yataverse-blocks.…sslip.io` is Xavier's block-ingest entrance, not a bucket.
+    The R2 bucket the bridge reads is named in the README.
+- **Certificate:** the owner issues it by DNS-01 exactly as in §1.2, using
+  `certbot` or the pinned lego from §3 on the temporary node, with the TXT added
+  by hand. No API token is involved. Before switching DNS, run the §1.3 and §1.4
+  checks on the node.
+- **DNS:** change the `ipfs.yataverse.com` A record (TTL 300, DNS only) to the
+  node's address, then run §2 against it. When Xavier is back and has passed
+  §0.1, change the A record back to `220.146.177.126`, wait at least 300 s, run
+  §2 again, and delete the temporary node. Each change of the A record is a
+  route change and needs approval.
+- **Fits AWAI-465's rules:** Cloudflare stays DNS-only, and our own node serves
+  the bytes.
+
+### (b) Cloudflare proxy with Cloudflare's edge certificate (not recommended)
+
+- Turn on the orange cloud for `ipfs.yataverse.com`, and Cloudflare serves its
+  own edge certificate. The proxy is $0 on the existing plan.
+- With Xavier down, the proxy still needs an origin. In practice that means a
+  Cloudflare Worker reading from R2: $0 on the free tier, or $5/mo for Workers
+  Paid.
+- **This breaks AWAI-465's rule** that Cloudflare is DNS-only and that the bytes
+  come from our own node. Cloudflare would terminate TLS and serve or proxy the
+  bytes. It also changes the trust boundary and the Reader contract tested in
+  JUN-228. Not recommended. It would need its own owner decision and its own
+  checks.
+
+## 5. Record
 
 Post on AWAI-465 (no TXT value, no key, no token):
 
